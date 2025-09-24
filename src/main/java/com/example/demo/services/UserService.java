@@ -3,8 +3,10 @@ package com.example.demo.services;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.crypto.Cipher;
@@ -15,8 +17,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.models.User.UpdateUserDTO;
+import com.example.demo.models.User.User;
 import com.example.demo.repositories.UserRepository;
-import com.example.demo.models.User;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class UserService {
@@ -66,6 +71,47 @@ public class UserService {
     savedUser.setPassword(null);
 
     return savedUser;
+  }
+
+  @Transactional
+  public Optional<User> updateUser(String id, UpdateUserDTO dto) {
+
+    Optional<User> userOptional = userRepository.findById(id);
+    if (userOptional.isEmpty()) {
+      throw new IllegalArgumentException("No se encuentra el usuario");
+    }
+
+    return userOptional.map(user -> {
+      if (dto.getEmail() != null)
+        user.setEmail(dto.getEmail());
+      if (dto.getName() != null)
+        user.setName(dto.getName());
+      if (dto.getPhone() != null)
+        user.setPhone(dto.getPhone());
+      if (dto.getTaxId() != null)
+        user.setTaxId(dto.getTaxId());
+
+      if (dto.getOldPassword() != null && dto.getNewPassword() != null) {
+
+        String userPassword = decryptPassword(user.getPassword());
+
+        if (!dto.getOldPassword().equals(userPassword)) {
+          throw new IllegalArgumentException("La contraseña anterior no es correcta");
+        }
+        user.setPassword(encryptPassword(dto.getNewPassword()));
+      }
+
+      return userRepository.save(user);
+    });
+  }
+
+  public boolean deleteUserById(String id) {
+    Optional<User> userOpt = userRepository.findById(id);
+    if (userOpt.isPresent()) {
+      userRepository.delete(userOpt.get());
+      return true;
+    }
+    return false;
   }
 
   private Comparator<User> getComparator(String sortedBy) {
@@ -127,6 +173,27 @@ public class UserService {
 
     } catch (Exception e) {
       throw new RuntimeException("Error al encriptar la contraseña: " + e.getMessage(), e);
+    }
+  }
+
+  public String decryptPassword(byte[] encryptedWithIv) {
+    try {
+
+      byte[] iv = Arrays.copyOfRange(encryptedWithIv, 0, 12);
+
+      byte[] encrypted = Arrays.copyOfRange(encryptedWithIv, 12, encryptedWithIv.length);
+
+      SecretKeySpec key = new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), "AES");
+      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+      GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+
+      cipher.init(Cipher.DECRYPT_MODE, key, spec);
+
+      byte[] decrypted = cipher.doFinal(encrypted);
+      return new String(decrypted, StandardCharsets.UTF_8);
+
+    } catch (Exception e) {
+      throw new RuntimeException("Error al desencriptar la contraseña: " + e.getMessage(), e);
     }
   }
 

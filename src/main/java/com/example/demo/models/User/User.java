@@ -1,5 +1,6 @@
-package com.example.demo.models;
+package com.example.demo.models.User;
 
+import com.example.demo.models.Address;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

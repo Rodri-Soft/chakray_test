@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.validator.constraints.Length;
 
+import com.example.demo.models.User.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
