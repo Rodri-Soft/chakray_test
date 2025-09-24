@@ -7,5 +7,5 @@ import com.example.demo.models.User;
 
 @Repository
 public interface UserRepository extends CrudRepository<User, String> {
-  
+  public boolean existsByTaxId(String taxId);
 }
